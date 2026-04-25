@@ -1,8 +1,9 @@
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Exercise, RehabPlan
-from .serializers import ExerciseSerializer, RehabPlanSerializer
-from .permissions import IsDoctor, IsAssignedDoctorOrPatient
+from .models import Exercise, RehabPlan, ExerciseSession
+from .serializers import ExerciseSerializer, RehabPlanSerializer, ExerciseSessionSerializer
+from .permissions import IsDoctor, IsAssignedDoctorOrPatient, IsSessionPatient
 
 
 class ExerciseListView(generics.ListAPIView):
@@ -34,4 +35,14 @@ class RehabPlanDetailView(generics.RetrieveAPIView):
     serializer_class = RehabPlanSerializer
     permission_classes = [IsAssignedDoctorOrPatient]
 
+class CompleteSessionView(generics.UpdateAPIView):
+    """
+    Patient completes a session by submitting per-exercise performance results.
+    """
+    queryset = ExerciseSession.objects.all()
+    serializer_class = ExerciseSessionSerializer
+    permission_classes = [IsSessionPatient]
+    http_method_names = ['post']
 
+    def post(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)

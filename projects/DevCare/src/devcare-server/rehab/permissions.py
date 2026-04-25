@@ -34,3 +34,20 @@ class IsAssignedDoctorOrPatient(permissions.BasePermission):
             
         return False
 
+class IsSessionPatient(permissions.BasePermission):
+    """
+    Allows access only to the patient who owns the session.
+    """
+    def has_object_permission(self, request, view, obj):
+        if not request.user or not request.user.is_authenticated:
+            return False
+            
+        if request.user.role != 'patient':
+            raise PermissionDenied("Only patient users can complete rehab sessions.")
+            
+        if obj.patient != request.user:
+            raise PermissionDenied("You can only complete your own sessions.")
+            
+        return True
+
+

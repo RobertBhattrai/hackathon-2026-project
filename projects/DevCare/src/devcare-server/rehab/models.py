@@ -32,6 +32,31 @@ class PlanExercise(models.Model):
     order = models.PositiveIntegerField()
     target_reps = models.PositiveIntegerField()
 
-    class Meta:
+class Meta:
         ordering = ['order']
         unique_together = ('plan', 'order')
+
+class ExerciseSession(models.Model):
+    patient = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name='sessions')
+    plan = models.ForeignKey(RehabPlan, on_delete=models.CASCADE, related_name='sessions')
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"Session {self.id} - {self.patient.username}"
+
+class SessionResult(models.Model):
+    session = models.ForeignKey(ExerciseSession, on_delete=models.CASCADE, related_name='results')
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField()
+    reps = models.PositiveIntegerField()
+    accuracy = models.FloatField()
+    duration = models.FloatField()
+
+    class Meta:
+        ordering = ['order']
+        unique_together = ('session', 'order')
+

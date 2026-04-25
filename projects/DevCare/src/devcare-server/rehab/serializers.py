@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Exercise, RehabPlan, PlanExercise
+from .models import Exercise, RehabPlan, PlanExercise, ExerciseSession, SessionResult
 
 User = get_user_model()
 
@@ -59,3 +59,55 @@ class RehabPlanSerializer(serializers.ModelSerializer):
             
         return plan
 
+class SessionResultSerializer(serializers.ModelSerializer):
+    exercise_id = serializers.IntegerField()
+    exercise_name = serializers.ReadOnlyField(source='exercise.name')
+
+    class Meta:
+        model = SessionResult
+        fields = ['order', 'exercise_id', 'exercise_name', 'reps', 'accuracy', 'duration']
+
+class ExerciseSessionSerializer(serializers.ModelSerializer):
+    patient_id = serializers.ReadOnlyField(source='patient.id')
+    plan_id = serializers.ReadOnlyField(source='plan.id')
+    results = SessionResultSerializer(many=True)
+
+    class Meta:
+        model = ExerciseSession
+        fields = ['id', 'patient_id', 'plan_id', 'started_at', 'completed_at', 'results']
+
+    def validate_results(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one result required.")
+        
+        orders = [item['order'] for item in value]
+        if len(orders) != len(set(orders)):
+            raise serializers.ValidationError("Result order values must be unique.")
+        
+        return value
+
+    def update(self, instance, validated_data):
+        results_data = validated_data.pop('results')
+        instance.completed_at = validated_data.get('completed_at', instance.completed_at)
+        instance.save()
+
+        # Clear existing results
+        instance.results.all().delete()
+
+        # Validate exercises are in plan
+        plan_exercise_ids = set(instance.plan.exercises.values_list('exercise_id', flat=True))
+        submitted_exercise_ids = [item['exercise_id'] for item in results_data]
+        invalid_ids = [eid for eid in submitted_exercise_ids if eid not in plan_exercise_ids]
+
+        if invalid_ids:
+            raise serializers.ValidationError({
+                "detail": "Submitted results include exercises not assigned in this plan.",
+                "exercise_ids": invalid_ids
+            })
+
+        for res_data in results_data:
+            exercise_id = res_data.pop('exercise_id')
+            exercise = Exercise.objects.get(id=exercise_id)
+            SessionResult.objects.create(session=instance, exercise=exercise, **res_data)
+
+        return instance
