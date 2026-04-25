@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',
     # Local
     'user',
-    'ai_modules',
+    'ai_module',
 ]
 
 MIDDLEWARE = [
