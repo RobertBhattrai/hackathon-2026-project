@@ -3,14 +3,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from user.models import UserProfile
-
 from .models import ExerciseSession
 
-
 User = get_user_model()
-
 
 class UploadSessionView(APIView):
     permission_classes = [IsAuthenticated]
@@ -35,13 +30,12 @@ class UploadSessionView(APIView):
 
     def _resolve_patient(self, request):
         request_user = request.user
-        profile = getattr(request_user, "profile", None)
-        role = getattr(profile, "role", None)
+        role = getattr(request_user, "role", None)
 
-        if role == UserProfile.ROLE_PATIENT:
+        if role == 'patient':
             return request_user
 
-        if role == UserProfile.ROLE_DOCTOR:
+        if role == 'doctor':
             patient_id = request.data.get("patient_id")
             if not patient_id:
                 raise ValueError("patient_id is required when doctor uploads a session.")
@@ -53,8 +47,7 @@ class UploadSessionView(APIView):
             except User.DoesNotExist:
                 raise ValueError("Patient not found.") from None
 
-            patient_profile = getattr(patient, "profile", None)
-            if not patient_profile or patient_profile.role != UserProfile.ROLE_PATIENT:
+            if patient.role != 'patient':
                 raise ValueError("patient_id must belong to a patient user.")
 
             return patient
