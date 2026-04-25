@@ -13,3 +13,25 @@ class Exercise(models.Model):
 
     def __str__(self):
         return self.name
+
+class RehabPlan(models.Model):
+    name = models.CharField(max_length=120)
+    doctor = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name='plans_created')
+    patient = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name='rehab_plans')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.patient.username})"
+
+class PlanExercise(models.Model):
+    plan = models.ForeignKey(RehabPlan, on_delete=models.CASCADE, related_name='exercises')
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField()
+    target_reps = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['order']
+        unique_together = ('plan', 'order')
