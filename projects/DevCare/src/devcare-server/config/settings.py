@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     # Local
     'user',
     'ai_modules',
+    'rehab',
 ]
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
