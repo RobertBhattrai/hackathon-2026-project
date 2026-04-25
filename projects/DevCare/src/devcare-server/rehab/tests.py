@@ -128,3 +128,46 @@ class RehabAPITests(APITestCase):
         response = self.client.post(self.plans_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('exercises', response.data)
+
+    def test_get_rehab_plan_detail_as_assigned_doctor(self):
+        """Doctor can view plan they created."""
+        # Create a plan
+        plan = RehabPlan.objects.create(doctor=self.doctor, patient=self.patient, name="Test Plan")
+        url = reverse('rehab-plan-detail', kwargs={'pk': plan.id})
+        
+        self.authenticate('doctor@test.com', 'password123')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], "Test Plan")
+
+    def test_get_rehab_plan_detail_as_assigned_patient(self):
+        """Patient can view plan assigned to them."""
+        plan = RehabPlan.objects.create(doctor=self.doctor, patient=self.patient, name="Test Plan")
+        url = reverse('rehab-plan-detail', kwargs={'pk': plan.id})
+        
+        self.authenticate('patient@test.com', 'password123')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_get_rehab_plan_detail_unauthorized_doctor(self):
+        """Doctor cannot view plans they didn't create."""
+        other_doctor = User.objects.create_user(email='other@test.com', username='other', password='password123', role='doctor')
+        plan = RehabPlan.objects.create(doctor=self.doctor, patient=self.patient, name="Test Plan")
+        url = reverse('rehab-plan-detail', kwargs={'pk': plan.id})
+        
+        self.authenticate('other@test.com', 'password123')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['detail'], "You can only view plans you created.")
+
+    def test_get_rehab_plan_detail_unauthorized_patient(self):
+        """Patient cannot view plans not assigned to them."""
+        other_patient = User.objects.create_user(email='otherp@test.com', username='otherp', password='password123', role='patient')
+        plan = RehabPlan.objects.create(doctor=self.doctor, patient=self.patient, name="Test Plan")
+        url = reverse('rehab-plan-detail', kwargs={'pk': plan.id})
+        
+        self.authenticate('otherp@test.com', 'password123')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['detail'], "You can only view plans assigned to you.")
+

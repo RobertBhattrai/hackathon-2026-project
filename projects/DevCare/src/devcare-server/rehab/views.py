@@ -2,7 +2,8 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from .models import Exercise, RehabPlan
 from .serializers import ExerciseSerializer, RehabPlanSerializer
-from .permissions import IsDoctor
+from .permissions import IsDoctor, IsAssignedDoctorOrPatient
+
 
 class ExerciseListView(generics.ListAPIView):
     """
@@ -23,4 +24,14 @@ class RehabPlanCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(doctor=self.request.user)
+
+class RehabPlanDetailView(generics.RetrieveAPIView):
+    """
+    Retrieve a specific rehab plan with its ordered exercises.
+    Assigned doctor or patient only.
+    """
+    queryset = RehabPlan.objects.all()
+    serializer_class = RehabPlanSerializer
+    permission_classes = [IsAssignedDoctorOrPatient]
+
 
