@@ -24,6 +24,10 @@ function AssignTherapy() {
   const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState('')
 
+  const [planName, setPlanName] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
   useEffect(() => {
     Promise.all([getMyPatients(), getExercises()])
       .then(([pData, exData]) => {
@@ -78,7 +82,9 @@ function AssignTherapy() {
     try {
       const planData = {
         patient_id: parseInt(selectedPatient),
-        name: `Recovery Plan - ${new Date().toLocaleDateString()}`,
+        name: planName,
+        start_date: startDate,
+        end_date: endDate,
         tasks: tasks,
         exercises: sortedExercises
       }
@@ -90,6 +96,9 @@ function AssignTherapy() {
       setExercises([])
       setTasks([])
       setSelectedPatient('')
+      setPlanName('')
+      setStartDate('')
+      setEndDate('')
     } catch (err) {
       alert(`Failed to deploy plan: ${err.message}`)
     } finally {
@@ -141,6 +150,42 @@ function AssignTherapy() {
                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                   <ArrowRight size={18} className="rotate-90" />
                </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Plan Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter plan name (e.g. Knee Recovery Phase 1)"
+                  className="auth-input h-[48px]"
+                  value={planName}
+                  onChange={(e) => setPlanName(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    className="auth-input h-[48px]"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    className="auth-input h-[48px]"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
             </div>
           </section>
 
@@ -294,7 +339,7 @@ function AssignTherapy() {
                </div>
 
                <button 
-                 disabled={!selectedPatient || (exercises.length === 0 && tasks.length === 0) || submitting}
+                 disabled={!selectedPatient || !planName || !startDate || !endDate || startDate > endDate || (exercises.length === 0 && tasks.length === 0) || submitting}
                  className="btn-primary w-full mt-10 py-4 rounded-2xl flex items-center justify-center gap-3 shadow-blue-200 disabled:opacity-50"
                  onClick={handleDeployPlan}
                >

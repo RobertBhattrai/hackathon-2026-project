@@ -231,7 +231,16 @@ class PatientPlanListView(APIView):
 		if not profile or profile.role != UserProfile.ROLE_PATIENT:
 			return Response({"detail": "Only patients can view their assigned plans."}, status=status.HTTP_403_FORBIDDEN)
 
-		plans = RehabPlan.objects.filter(patient=request.user).prefetch_related("plan_exercises__exercise")
+		from django.utils import timezone
+		today = timezone.now().date()
+		
+		plans = RehabPlan.objects.filter(
+			patient=request.user,
+			is_active=True,
+			start_date__lte=today,
+			end_date__gte=today
+		).prefetch_related("plan_exercises__exercise")
+		
 		serializer = RehabPlanDetailSerializer(plans, many=True)
 		return Response(serializer.data, status=status.HTTP_200_OK)
 

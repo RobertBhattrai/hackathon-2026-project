@@ -40,6 +40,8 @@ class RehabPlanExerciseWriteSerializer(serializers.Serializer):
 class RehabPlanCreateSerializer(serializers.Serializer):
     patient_id = serializers.IntegerField(min_value=1)
     name = serializers.CharField(max_length=120)
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
     tasks = serializers.ListField(child=serializers.CharField(), required=False, default=list)
     exercises = RehabPlanExerciseWriteSerializer(many=True, required=False, default=list)
 
@@ -48,6 +50,16 @@ class RehabPlanCreateSerializer(serializers.Serializer):
         tasks = data.get("tasks", [])
         if not exercises and not tasks:
             raise serializers.ValidationError("At least one exercise or one task must be provided.")
+        
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        
+        if start_date and end_date:
+            if start_date > end_date:
+                raise serializers.ValidationError({"end_date": "End date cannot be before start date."})
+            if end_date < timezone.now().date():
+                raise serializers.ValidationError({"end_date": "End date cannot be in the past."})
+                
         return data
 
     def validate_patient_id(self, value):
@@ -96,6 +108,8 @@ class RehabPlanCreateSerializer(serializers.Serializer):
             doctor=doctor,
             patient=patient,
             name=validated_data["name"],
+            start_date=validated_data["start_date"],
+            end_date=validated_data["end_date"],
             tasks=validated_data.get("tasks", [])
         )
 
@@ -129,7 +143,7 @@ class RehabPlanDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RehabPlan
-        fields = ["id", "doctor_id", "patient_id", "name", "tasks", "created_at", "exercises"]
+        fields = ["id", "doctor_id", "patient_id", "name", "start_date", "end_date", "is_active", "tasks", "created_at", "exercises"]
 
     def get_exercises(self, obj):
         links = obj.plan_exercises.select_related("exercise").order_by("order", "id")

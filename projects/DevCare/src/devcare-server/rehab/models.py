@@ -30,6 +30,9 @@ class RehabPlan(models.Model):
 	)
 	name = models.CharField(max_length=120)
 	tasks = models.JSONField(default=list, blank=True) # Added for Daily Recovery Roadmap
+	start_date = models.DateField(null=True, blank=True)
+	end_date = models.DateField(null=True, blank=True)
+	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
