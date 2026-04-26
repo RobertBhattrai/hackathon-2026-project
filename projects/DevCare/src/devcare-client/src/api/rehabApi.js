@@ -102,3 +102,21 @@ export async function getPatientSessions(patientId) {
   if (!res.ok) throw new Error('Failed to fetch patient sessions')
   return res.json()
 }
+
+/**
+ * Doctor: Submit feedback for a patient session
+ */
+export async function submitFeedback(payload) {
+  const res = await fetch(`${API_BASE}/rehab/feedback/`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  })
+  
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.detail || 'Failed to submit feedback')
+  }
+  
+  return res.json()
+}

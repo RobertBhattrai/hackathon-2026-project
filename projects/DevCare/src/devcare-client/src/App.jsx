@@ -86,7 +86,7 @@ function App() {
           }
         />
         <Route
-          path="/doctor/feedback"
+          path="/doctor/feedback/:patientId"
           element={
             <ProtectedRoute allowedRoles={['doctor']}>
               <FeedbackReview />
