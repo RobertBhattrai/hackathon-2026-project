@@ -42,8 +42,23 @@ function SessionDetail() {
     )
   }
 
-  const avgAccuracy = session.results?.reduce((acc, r) => acc + r.accuracy, 0) / (session.results?.length || 1)
-  const totalReps = session.results?.reduce((acc, r) => acc + r.reps, 0) || 0
+  const avgAccuracy = session.body_part_scores?.length > 0
+    ? session.body_part_scores.reduce((acc, r) => acc + (r.score || 0), 0) / session.body_part_scores.length
+    : 0;
+  const totalReps = session.results?.reduce((acc, r) => acc + (r.reps || 0), 0) || 0
+
+  if (!session.completed_at || (session.results?.length === 0 && session.body_part_scores?.length === 0)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400 gap-4 animate-fade-in">
+        <Info size={48} className="text-slate-300" />
+        <h2 className="text-xl font-bold text-slate-700">Incomplete Session</h2>
+        <p className="text-sm font-medium">This session has no recorded results. It may not have been completed.</p>
+        <button onClick={() => navigate('/session-result')} className="mt-4 px-6 py-2 bg-[var(--color-primary)] text-white rounded-xl font-bold text-sm shadow-md">
+          Go Back
+        </button>
+      </div>
+    )
+  }
 
   const handleExportPDF = () => {
     window.print()

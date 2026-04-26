@@ -16,8 +16,10 @@ function SessionResult() {
           const results = session.results || [];
           const totalReps = results.reduce((acc, r) => acc + (r.reps || 0), 0);
           const totalDurationSecs = results.reduce((acc, r) => acc + (r.duration || 0), 0);
-          const avgAccuracy = results.length > 0 
-            ? Math.round(results.reduce((acc, r) => acc + (r.accuracy || 0), 0) / results.length) 
+          
+          const bps = session.body_part_scores || [];
+          const avgScore = bps.length > 0 
+            ? Math.round(bps.reduce((acc, s) => acc + (s.score || 0), 0) / bps.length)
             : 0;
             
           const mins = Math.floor(totalDurationSecs / 60);
@@ -25,14 +27,14 @@ function SessionResult() {
           const formattedDuration = `${mins}m ${secs.toString().padStart(2, '0')}s`;
           
           let stability = 'Needs Work';
-          if (avgAccuracy >= 90) stability = 'Excellent';
-          else if (avgAccuracy >= 75) stability = 'Good';
+          if (avgScore >= 90) stability = 'Excellent';
+          else if (avgScore >= 75) stability = 'Good';
 
           return {
             ...session,
             reps: totalReps,
             duration: formattedDuration,
-            accuracy: avgAccuracy,
+            accuracy: avgScore,
             stability: stability
           };
         });
