@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, UserPlus, Filter, MoreHorizontal, Users, Loader2 } from 'lucide-react'
 import { getMyPatients } from '../../api/connectionsApi'
+import { getPatientSessions } from '../../api/rehabApi'
 
 function PatientList() {
   const [patients, setPatients] = useState([])
@@ -15,34 +16,51 @@ function PatientList() {
   ]
 
   useEffect(() => {
-    getMyPatients()
-      .then(data => {
-        // Map real data to match the UI structure
-        const realPatients = data.map(p => ({
-          id: p.id,
-          name: p.name,
-          progress: 0,
-          condition: 'Recently Connected',
-          lastSeen: p.connected_at ? new Date(p.connected_at).toLocaleDateString() : 'N/A',
-          status: 'Review Ready',
-          risk: 'None',
-          isReal: true
+    const fetchPatientsWithStatus = async () => {
+      try {
+        const data = await getMyPatients()
+        
+        const patientsWithStatus = await Promise.all(data.map(async (p) => {
+          let hasPendingReview = false;
+          try {
+            const sessions = await getPatientSessions(p.id);
+            hasPendingReview = sessions.some(s => !s.feedback);
+          } catch (err) {
+            console.error(`Failed to fetch sessions for patient ${p.id}`, err);
+          }
+
+          return {
+            id: p.id,
+            name: p.name,
+            progress: 0,
+            condition: 'Recently Connected',
+            lastSeen: p.connected_at ? new Date(p.connected_at).toLocaleDateString() : 'N/A',
+            status: hasPendingReview ? 'Pending Review' : 'Reviewed',
+            risk: 'None',
+            isReal: true
+          }
         }))
-        setPatients([...realPatients, ...mockPatients])
-      })
-      .catch(err => {
+        
+        setPatients([...patientsWithStatus, ...mockPatients])
+      } catch (err) {
         console.error(err)
         setError(err.message)
         setPatients(mockPatients)
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPatientsWithStatus()
   }, [])
 
   const getStatusStyle = (status) => {
     switch (status) {
       case 'Falling Behind': return 'bg-red-50 text-red-600 border-red-100'
-      case 'Review Ready': return 'bg-blue-50 text-blue-600 border-blue-100'
-      default: return 'bg-emerald-50 text-emerald-600 border-emerald-100'
+      case 'Pending Review': return 'bg-amber-50 text-amber-600 border-amber-100'
+      case 'Reviewed': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
+      case 'On Track': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
+      default: return 'bg-slate-50 text-slate-600 border-slate-100'
     }
   }
 

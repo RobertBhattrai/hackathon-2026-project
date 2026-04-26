@@ -120,3 +120,14 @@ export async function submitFeedback(payload) {
   
   return res.json()
 }
+
+/**
+ * Fetch detailed information about a specific rehab plan
+ */
+export async function getPlanDetail(planId) {
+  const res = await fetch(`${API_BASE}/rehab/plans/${planId}/`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch plan details')
+  return res.json()
+}
