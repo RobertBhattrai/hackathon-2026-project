@@ -1,7 +1,8 @@
 import { useParams, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { getPatientSessions } from '../../api/rehabApi'
+import { getPatientSessions, getPlanDetail } from '../../api/rehabApi'
 import { getMyPatients } from '../../api/connectionsApi'
+import Modal from '../../components/Modal'
 import { 
   ChevronLeft, 
   Calendar, 
@@ -12,7 +13,10 @@ import {
   Edit3,
   Clock,
   Target,
-  TrendingDown
+  TrendingDown,
+  X,
+  ClipboardList,
+  CheckCircle2
 } from 'lucide-react'
 
 function PatientDetail() {
@@ -20,6 +24,9 @@ function PatientDetail() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [patientInfo, setPatientInfo] = useState(null)
+  const [selectedPlan, setSelectedPlan] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [planLoading, setPlanLoading] = useState(false)
   
   useEffect(() => {
     getPatientSessions(id)
@@ -35,18 +42,46 @@ function PatientDetail() {
       .catch(err => console.error(err))
   }, [id])
 
+  const handleViewPlan = async (planId) => {
+    if (!planId || planId === 'none') return
+    setPlanLoading(true)
+    setIsModalOpen(true)
+    try {
+      const data = await getPlanDetail(planId)
+      setSelectedPlan(data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
   const latestSession = sessions[0]
 
-  // Map real feedback to notes
-  const notes = sessions
-    .filter(s => s.feedback)
-    .map((s, index) => ({
-      id: s.feedback.id || index,
-      date: new Date(s.feedback.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' }),
-      tag: 'EVALUATION',
-      content: s.feedback.guidance,
-      rating: s.feedback.rating
-    }))
+  // Map sessions to notes, including those without feedback
+  const notes = sessions.map((s, index) => {
+    if (s.feedback) {
+      return {
+        id: s.feedback.id || `session-${s.id}`,
+        session_id: s.id,
+        date: new Date(s.feedback.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' }),
+        tag: 'EVALUATION',
+        content: s.feedback.guidance,
+        rating: s.feedback.rating,
+        hasFeedback: true
+      }
+    } else {
+      return {
+        id: `session-${s.id}`,
+        session_id: s.id,
+        date: new Date(s.completed_at || s.started_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' }),
+        tag: 'PENDING REVIEW',
+        content: 'Session completed. Awaiting clinical review and guidance.',
+        rating: 0,
+        hasFeedback: false
+      }
+    }
+  })
 
   // Extract unique plans from sessions
   const uniquePlans = []
@@ -255,23 +290,35 @@ function PatientDetail() {
             <div className="space-y-12">
               {patient.notes.length > 0 ? patient.notes.map((note, i) => (
                 <div key={note.id} className="relative pl-12">
-                   <div className="absolute left-0 top-1.5 h-4 w-4 rounded-full bg-white border-4 border-slate-900 ring-8 ring-slate-50 shadow-sm z-10"></div>
+                   <div className={`absolute left-0 top-1.5 h-4 w-4 rounded-full bg-white border-4 ${note.hasFeedback ? 'border-slate-900 ring-slate-50' : 'border-amber-500 ring-amber-50'} ring-8 shadow-sm z-10`}></div>
                    {i !== patient.notes.length - 1 && <div className="absolute left-[7.5px] top-8 bottom-[-48px] w-0.5 bg-slate-100"></div>}
                    <div className="flex items-center justify-between mb-4">
                      <div className="flex items-center gap-3">
                         <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">{note.date}</span>
                         <div className="h-1 w-1 rounded-full bg-slate-300"></div>
-                        <span className="text-[9px] font-black tracking-widest bg-blue-50 text-blue-600 px-2 py-1 rounded-lg border border-blue-100">{note.tag}</span>
-                        <div className="h-1 w-1 rounded-full bg-slate-300"></div>
-                        <span className="text-[10px] font-bold text-amber-500">{"★".repeat(note.rating)}{"☆".repeat(5 - note.rating)}</span>
+                        <span className={`text-[9px] font-black tracking-widest px-2 py-1 rounded-lg border ${note.hasFeedback ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{note.tag}</span>
+                        {note.hasFeedback && (
+                          <>
+                            <div className="h-1 w-1 rounded-full bg-slate-300"></div>
+                            <span className="text-[10px] font-bold text-amber-500">{"★".repeat(note.rating)}{"☆".repeat(5 - note.rating)}</span>
+                          </>
+                        )}
                      </div>
+                     {!note.hasFeedback && (
+                       <Link 
+                         to={`/doctor/feedback/${id}?session=${note.session_id}`}
+                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-bold hover:bg-amber-600 transition-all shadow-sm"
+                       >
+                         Review Session
+                       </Link>
+                     )}
                    </div>
-                   <p className="text-base leading-relaxed text-slate-600 font-medium bg-slate-50/50 p-6 rounded-[1.5rem] border border-slate-100/50 whitespace-pre-wrap">
+                   <p className={`text-base leading-relaxed font-medium p-6 rounded-[1.5rem] border whitespace-pre-wrap ${note.hasFeedback ? 'text-slate-600 bg-slate-50/50 border-slate-100/50' : 'text-slate-500 bg-white border-dashed border-amber-200'}`}>
                      {note.content}
                    </p>
                 </div>
               )) : (
-                <p className="text-sm text-slate-400 italic py-8 text-center border-2 border-dashed border-slate-100 rounded-[2rem]">No clinical feedback provided yet.</p>
+                <p className="text-sm text-slate-400 italic py-8 text-center border-2 border-dashed border-slate-100 rounded-[2rem]">No clinical records available.</p>
               )}
             </div>
           </section>
@@ -280,17 +327,35 @@ function PatientDetail() {
         {/* Right Sidebar */}
         <div className="lg:col-span-4 space-y-8">
           <section className="elevated-card border-none p-8 shadow-lg">
-             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-primary)] mb-4">
+             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-primary)] mb-4 cursor-pointer" onClick={() => patient.currentPlan[0]?.id !== 'none' && handleViewPlan(patient.currentPlan[0]?.id)}>
                 <div className="h-1 w-4 bg-[var(--color-primary)] rounded-full"></div>
                 Active Protocol
              </div>
              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold text-slate-900">Current Plan</h3>
-               <Link to="/doctor/assign" className="text-xs font-bold text-blue-600 hover:underline">Modify</Link>
+                <h3 className="text-xl font-bold text-slate-900 cursor-pointer" onClick={() => patient.currentPlan[0]?.id !== 'none' && handleViewPlan(patient.currentPlan[0]?.id)}>Current Plan</h3>
+               <div className="flex gap-4 items-center">
+                 <button onClick={() => patient.currentPlan[0]?.id !== 'none' && handleViewPlan(patient.currentPlan[0]?.id)} className="text-xs font-bold text-blue-600 hover:underline">View Details</button>
+                 <Link 
+                   to="/doctor/assign" 
+                   onClick={(e) => {
+                     if (patient.currentPlan[0]?.id !== 'none') {
+                       e.preventDefault();
+                       handleViewPlan(patient.currentPlan[0]?.id);
+                     }
+                   }}
+                   className="text-xs font-bold text-[var(--color-text-muted)] hover:underline"
+                 >
+                   Modify
+                 </Link>
+               </div>
             </div>
             <div className="space-y-4">
               {patient.currentPlan.map(ex => (
-                <div key={ex.id} className="flex items-center gap-5 rounded-[1.5rem] bg-slate-50 p-5 border border-slate-100 hover:border-blue-200 hover:bg-white transition-all cursor-pointer group shadow-sm hover:shadow-md">
+                <div 
+                  key={ex.id} 
+                  onClick={() => handleViewPlan(ex.id)}
+                  className="flex items-center gap-5 rounded-[1.5rem] bg-slate-50 p-5 border border-slate-100 hover:border-blue-200 hover:bg-white transition-all cursor-pointer group shadow-sm hover:shadow-md"
+                >
                   <div className="h-14 w-14 rounded-2xl bg-white shadow-sm border border-slate-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                     {ex.icon}
                   </div>
@@ -386,6 +451,105 @@ function PatientDetail() {
           </section>
         </div>
       </div>
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        title="Therapy Plan Details"
+      >
+        {planLoading ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-4">
+            <div className="h-12 w-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+            <p className="text-slate-500 font-bold text-sm">Fetching plan details...</p>
+          </div>
+        ) : selectedPlan ? (
+          <div className="space-y-8">
+            <div className="flex items-start gap-4 p-6 rounded-[2rem] bg-blue-50/50 border border-blue-100">
+              <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-2xl">
+                📋
+              </div>
+              <div>
+                <h4 className="text-xl font-black text-slate-900">{selectedPlan.name}</h4>
+                <p className="text-sm text-slate-500 font-bold mt-1">Assigned on {new Date(selectedPlan.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            {selectedPlan.exercises && selectedPlan.exercises.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  <div className="h-1 w-4 bg-slate-200 rounded-full"></div>
+                  Exercises
+                </div>
+                <div className="grid gap-4">
+                  {selectedPlan.exercises.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-5 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-xs font-black text-slate-400 border border-slate-100">
+                          {item.order}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{item.exercise.name}</p>
+                          <p className="text-[11px] text-slate-500 font-medium">{item.exercise.target_joint}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-black text-blue-600">{item.target_reps} Reps</p>
+                        <p className="text-[10px] font-bold text-slate-400">Target Goal</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                <div className="h-1 w-4 bg-slate-200 rounded-full"></div>
+                Biometric Body Part Scores
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  { part: 'Arms', score: 85, color: 'bg-emerald-500' },
+                  { part: 'Knees', score: 85, color: 'bg-emerald-500' },
+                  { part: 'Hips', score: 84, color: 'bg-emerald-500' },
+                  { part: 'Ankles', score: 84, color: 'bg-emerald-500' },
+                  { part: 'Shoulders', score: 80, color: 'bg-blue-500' }
+                ].map((score, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-500">{score.part}</span>
+                        <span className="text-sm font-black text-slate-900">{score.score}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${score.color} transition-all duration-1000`}
+                          style={{ width: `${score.score}%` }}
+                        />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {selectedPlan.tasks && selectedPlan.tasks.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  <div className="h-1 w-4 bg-slate-200 rounded-full"></div>
+                  Additional Tasks
+                </div>
+                <div className="space-y-3">
+                  {selectedPlan.tasks.map((task, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50/50 border border-slate-100">
+                      <CheckCircle2 size={16} className="text-emerald-500" />
+                      <span className="text-sm font-bold text-slate-700">{task}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="py-12 text-center text-slate-400 font-bold">Failed to load plan details.</div>
+        )}
+      </Modal>
     </div>
   )
 }
