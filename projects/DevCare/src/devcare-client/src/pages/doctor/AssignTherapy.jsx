@@ -37,7 +37,15 @@ function AssignTherapy() {
   const toggleExercise = (id) => {
     const exists = exercises.find(e => e.exercise_id === id)
     if (exists) {
-      setExercises(exercises.filter(e => e.exercise_id !== id))
+      // Remove it and re-calculate the order of the remaining exercises
+      const updatedExercises = exercises
+        .filter(e => e.exercise_id !== id)
+        .sort((a, b) => a.order - b.order)
+        .map((ex, index) => ({
+          ...ex,
+          order: index + 1
+        }))
+      setExercises(updatedExercises)
     } else {
       setExercises([...exercises, { exercise_id: id, target_reps: 10, order: exercises.length + 1 }])
     }
@@ -63,24 +71,27 @@ function AssignTherapy() {
   const handleDeployPlan = async () => {
     if (!selectedPatient) return
     
+    // Sort exercises to ensure order is sequential before sending
+    const sortedExercises = [...exercises].sort((a, b) => a.order - b.order)
+
     setSubmitting(true)
     try {
       const planData = {
         patient_id: parseInt(selectedPatient),
         name: `Recovery Plan - ${new Date().toLocaleDateString()}`,
         tasks: tasks,
-        exercises: exercises
+        exercises: sortedExercises
       }
       
-      await createRehabPlan(planData)
-      alert(`Plan successfully deployed for ${patients.find(p => String(p.id) === selectedPatient)?.name}!`)
+      const response = await createRehabPlan(planData)
+      alert(`Plan successfully deployed for ${patients.find(p => String(p.id) === selectedPatient)?.name}!\n\nExercises assigned: ${response.exercises?.length || 0}\nTasks added: ${response.tasks?.length || 0}`)
       
       // Reset form
       setExercises([])
       setTasks([])
       setSelectedPatient('')
     } catch (err) {
-      alert(err.message)
+      alert(`Failed to deploy plan: ${err.message}`)
     } finally {
       setSubmitting(false)
     }

@@ -14,25 +14,8 @@ function SessionDetail() {
     getSessionDetail(sessionId)
       .then(data => setSession(data))
       .catch(err => {
-        console.error(err)
-        // Mock fallback for demonstration if API fails or session not found
-        setSession({
-          id: sessionId,
-          plan_name: 'Quad Strengthening & Stability',
-          completed_at: new Date().toISOString(),
-          body_part_scores: [
-            { part: 'knees', score: 96 },
-            { part: 'arms', score: 82 },
-            { part: 'shoulders', score: 75 },
-            { part: 'hips', score: 88 },
-            { part: 'ankles', score: 91 }
-          ],
-          results: [
-            { exercise_name: 'Bicep Curl', reps: 12, accuracy: 94, duration: 45 },
-            { exercise_name: 'Squat stability', reps: 15, accuracy: 88, duration: 60 },
-            { exercise_name: 'Knee Extension', reps: 10, accuracy: 96, duration: 40 }
-          ]
-        })
+        console.error('Failed to load session details:', err)
+        setSession(null)
       })
       .finally(() => setLoading(false))
   }, [sessionId])
@@ -42,6 +25,19 @@ function SessionDetail() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400 gap-4">
         <Loader2 className="animate-spin" size={48} />
         <p className="font-bold tracking-widest text-xs uppercase">Generating Clinical Analytics...</p>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400 gap-4 animate-fade-in">
+        <Info size={48} className="text-slate-300" />
+        <h2 className="text-xl font-bold text-slate-700">Session not found</h2>
+        <p className="text-sm font-medium">The session you are looking for does not exist or failed to load.</p>
+        <button onClick={() => navigate('/session-result')} className="mt-4 px-6 py-2 bg-[var(--color-primary)] text-white rounded-xl font-bold text-sm shadow-md">
+          Go Back
+        </button>
       </div>
     )
   }
