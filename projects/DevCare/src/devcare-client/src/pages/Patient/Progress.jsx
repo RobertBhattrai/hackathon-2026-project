@@ -31,36 +31,6 @@ import {
 } from 'recharts'
 import { getSessionHistory } from '../../api/rehabApi'
 
-// --- High-Fidelity Mock Data for Full Visual Experience ---
-const RICH_MOCK_SESSIONS = [
-  { id: 'm1', date: 'Apr 01', fullDate: '2026-04-01', exercise: 'Initial Assessment', score: 60, status: 'Completed', reps: 8, duration: '10m' },
-  { id: 'm2', date: 'Apr 02', fullDate: '2026-04-02', exercise: 'Quad Strengthening', score: 62, status: 'Completed', reps: 10, duration: '12m' },
-  { id: 'm3', date: 'Apr 03', fullDate: '2026-04-03', exercise: 'Quad Strengthening', score: 65, status: 'Completed', reps: 10, duration: '12m' },
-  { id: 'm4', date: 'Apr 04', fullDate: '2026-04-04', exercise: '---', score: 0, status: 'Missed', reps: 0, duration: '0m' },
-  { id: 'm5', date: 'Apr 05', fullDate: '2026-04-05', exercise: 'Knee Mobility', score: 68, status: 'Completed', reps: 12, duration: '15m' },
-  { id: 'm6', date: 'Apr 06', fullDate: '2026-04-06', exercise: 'Knee Mobility', score: 70, status: 'Completed', reps: 12, duration: '15m' },
-  { id: 'm7', date: 'Apr 07', fullDate: '2026-04-07', exercise: 'Balance Drills', score: 72, status: 'Completed', reps: 5, duration: '10m' },
-  { id: 'm8', date: 'Apr 08', fullDate: '2026-04-08', exercise: '---', score: 0, status: 'Missed', reps: 0, duration: '0m' },
-  { id: 'm9', date: 'Apr 09', fullDate: '2026-04-09', exercise: 'Quad Strengthening', score: 75, status: 'Completed', reps: 15, duration: '15m' },
-  { id: 'm10', date: 'Apr 10', fullDate: '2026-04-10', exercise: 'Quad Strengthening', score: 74, status: 'Completed', reps: 15, duration: '15m' },
-  { id: 'm11', date: 'Apr 11', fullDate: '2026-04-11', exercise: 'Knee Mobility', score: 78, status: 'Completed', reps: 18, duration: '20m' },
-  { id: 'm12', date: 'Apr 12', fullDate: '2026-04-12', exercise: '---', score: 0, status: 'Missed', reps: 0, duration: '0m' },
-  { id: 'm13', date: 'Apr 13', fullDate: '2026-04-13', exercise: 'Balance Drills', score: 80, status: 'Completed', reps: 8, duration: '15m' },
-  { id: 'm14', date: 'Apr 14', fullDate: '2026-04-14', exercise: 'Balance Drills', score: 82, status: 'Completed', reps: 10, duration: '15m' },
-  { id: 'm15', date: 'Apr 15', fullDate: '2026-04-15', exercise: 'Quad Strengthening', score: 85, status: 'Completed', reps: 20, duration: '20m' },
-  { id: 'm16', date: 'Apr 16', fullDate: '2026-04-16', exercise: '---', score: 0, status: 'Missed', reps: 0, duration: '0m' },
-  { id: 'm17', date: 'Apr 17', fullDate: '2026-04-17', exercise: 'Knee Mobility', score: 88, status: 'Completed', reps: 22, duration: '25m' },
-  { id: 'm18', date: 'Apr 18', fullDate: '2026-04-18', exercise: 'Knee Mobility', score: 87, status: 'Completed', reps: 22, duration: '25m' },
-  { id: 'm19', date: 'Apr 19', fullDate: '2026-04-19', exercise: 'Balance Drills', score: 90, status: 'Completed', reps: 12, duration: '20m' },
-  { id: 'm20', date: 'Apr 20', fullDate: '2026-04-20', exercise: 'Quad Strengthening', score: 92, status: 'Completed', reps: 25, duration: '25m' },
-  { id: 'm21', date: 'Apr 21', fullDate: '2026-04-21', exercise: 'Quad Strengthening', score: 91, status: 'Completed', reps: 25, duration: '25m' },
-  { id: 'm22', date: 'Apr 22', fullDate: '2026-04-22', exercise: '---', score: 0, status: 'Missed', reps: 0, duration: '0m' },
-  { id: 'm23', date: 'Apr 23', fullDate: '2026-04-23', exercise: 'Knee Mobility', score: 94, status: 'Completed', reps: 28, duration: '30m' },
-  { id: 'm24', date: 'Apr 24', fullDate: '2026-04-24', exercise: 'Knee Mobility', score: 95, status: 'Completed', reps: 28, duration: '30m' },
-  { id: 'm25', date: 'Apr 25', fullDate: '2026-04-25', exercise: 'Balance Drills', score: 96, status: 'Completed', reps: 15, duration: '25m' },
-  { id: 'm26', date: 'Apr 26', fullDate: '2026-04-26', exercise: 'Quad Strengthening', score: 98, status: 'Completed', reps: 30, duration: '30m' },
-]
-
 function ProgressPage() {
   const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
@@ -71,7 +41,6 @@ function ProgressPage() {
     async function fetchData() {
       try {
         const data = await getSessionHistory()
-        let combinedData = [...RICH_MOCK_SESSIONS]
         
         if (data && data.length > 0) {
           const processedReal = data.map(s => {
@@ -83,34 +52,26 @@ function ProgressPage() {
             return {
               id: s.id,
               date,
-              fullDate: dateObj.toISOString().split('T')[0],
+              fullDate: dateObj.toLocaleDateString('en-CA'),
               exercise: s.plan_name || 'Therapy Session',
               score: avg,
               status: s.completed_at ? 'Completed' : 'Missed',
               reps: s.results?.reduce((acc, r) => acc + (r.reps || 0), 0) || 0,
               duration: s.completed_at ? '12m' : '0m',
-              isReal: true
+              isReal: true,
+              body_part_scores: bps
             }
           })
           
-          // Merge real data into mock data (replacing mock entries on same dates)
-          processedReal.forEach(real => {
-            const idx = combinedData.findIndex(m => m.fullDate === real.fullDate)
-            if (idx !== -1) {
-              combinedData[idx] = real
-            } else {
-              combinedData.push(real)
-            }
-          })
+          // Sort by date descending
+          processedReal.sort((a, b) => new Date(b.fullDate) - new Date(a.fullDate))
+          setSessions(processedReal)
+        } else {
+          setSessions([])
         }
-        
-        // Sort by date descending
-        combinedData.sort((a, b) => new Date(b.fullDate) - new Date(a.fullDate))
-        setSessions(combinedData)
       } catch (err) {
         console.error('Failed to fetch sessions:', err)
-        setError('Displaying enriched performance history.')
-        setSessions([...RICH_MOCK_SESSIONS].reverse())
+        setError('Unable to load your progress history. Please try again later.')
       } finally {
         setLoading(false)
       }
@@ -134,24 +95,21 @@ function ProgressPage() {
   // Dynamic Streak Calculation
   const calculateStreak = () => {
     if (sessions.length === 0) return 0
-    const completedSorted = sessions.filter(s => s.status === 'Completed')
+    const completedSorted = [...sessions].filter(s => s.status === 'Completed')
     if (completedSorted.length === 0) return 0
     
     let streak = 0
     const today = new Date()
     today.setHours(0,0,0,0)
     
-    // Starting from most recent
     for (let i = 0; i < completedSorted.length; i++) {
       const sessionDate = new Date(completedSorted[i].fullDate)
       sessionDate.setHours(0,0,0,0)
       
       const diffDays = Math.floor((today - sessionDate) / (1000 * 60 * 60 * 24))
       
-      // If the first one is more than 1 day ago, streak is broken
       if (i === 0 && diffDays > 1) return 0
       
-      // If sessions are contiguous (0 or 1 day apart)
       if (i === 0 || diffDays === i || diffDays === i + 1) {
         streak++
       } else {
@@ -178,7 +136,6 @@ function ProgressPage() {
     for (let i = 27; i >= 0; i--) {
       const d = new Date()
       d.setDate(today.getDate() - i)
-      // Use local date string YYYY-MM-DD
       const dateStr = d.toLocaleDateString('en-CA') 
       
       const session = sessions.find(s => s.fullDate === dateStr)
@@ -203,17 +160,7 @@ function ProgressPage() {
     }
     
     sessions.forEach(s => {
-      // For mock data, we'll assign the overall score to a likely body part based on exercise name
-      if (!s.isReal) {
-        if (s.exercise.includes('Quad') || s.exercise.includes('Knee')) {
-          parts['Knee'].total += s.score; parts['Knee'].count++
-        } else if (s.exercise.includes('Balance')) {
-          parts['Ankle'].total += s.score; parts['Ankle'].count++
-          parts['Hip'].total += s.score; parts['Hip'].count++
-        } else {
-          parts['Shoulder'].total += s.score; parts['Shoulder'].count++
-        }
-      } else if (s.body_part_scores) {
+      if (s.body_part_scores) {
         s.body_part_scores.forEach(bps => {
           if (parts[bps.part]) {
             parts[bps.part].total += bps.score
@@ -275,12 +222,30 @@ function ProgressPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-800 text-sm font-medium">
-          <Info size={18} />
-          {error}
+      {sessions.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center shadow-sm">
+          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Activity className="h-10 w-10 text-slate-300" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">No Sessions Yet</h2>
+          <p className="text-slate-500 max-w-md mx-auto mb-8">
+            Start your first therapy session to begin tracking your recovery progress and anatomical recovery.
+          </p>
+          <button 
+            onClick={() => navigate('/patient/therapy-library')}
+            className="px-8 py-3 bg-[#1E88E5] text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-md"
+          >
+            Go to Therapy Library
+          </button>
         </div>
-      )}
+      ) : (
+        <>
+          {error && (
+            <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-800 text-sm font-medium">
+              <Info size={18} />
+              {error}
+            </div>
+          )}
 
       {/* 1. Top Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
@@ -718,11 +683,13 @@ function ProgressPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
+      </>
+    )}
+  </div>
+)
 }
 
 function SummaryCard({ title, value, icon, trend, trendUp, subtext }) {
