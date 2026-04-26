@@ -225,11 +225,21 @@ function SessionDetail() {
                  <h3 className="font-black text-slate-800">Doctor's Review</h3>
               </div>
               <div className="space-y-4">
-                 <p className="text-sm text-slate-600 leading-relaxed italic">"Your knee flexion accuracy is significantly higher this session. Recommendation: Increase load by 5% next week."</p>
+                 {session.feedback ? (
+                   <>
+                     <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-xl">
+                       <span className="text-xs font-bold text-slate-500">Rating</span>
+                       <span className="text-amber-500 text-lg">{"★".repeat(session.feedback.rating)}{"☆".repeat(5 - session.feedback.rating)}</span>
+                     </div>
+                     <p className="text-sm text-slate-600 leading-relaxed italic whitespace-pre-wrap">"{session.feedback.guidance}"</p>
+                   </>
+                 ) : (
+                   <p className="text-sm text-slate-400 italic">No clinical feedback provided yet.</p>
+                 )}
                  <div className="h-px bg-slate-50 w-full"></div>
                  <div className="flex items-center justify-between text-xs font-bold">
                     <span className="text-slate-400 uppercase tracking-widest text-[9px]">Verified Provider</span>
-                    <span className="text-blue-500 font-black">Dr. {session.doctor_name || 'Sarah Johnson'}</span>
+                    <span className="text-blue-500 font-black">Dr. {session.doctor_name || 'Assigned Doctor'}</span>
                  </div>
               </div>
            </div>

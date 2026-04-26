@@ -212,10 +212,11 @@ class ExerciseSessionSerializer(serializers.ModelSerializer):
     doctor_name = serializers.SerializerMethodField()
     patient_id = serializers.IntegerField(source="patient.id", read_only=True)
     results = serializers.SerializerMethodField()
+    feedback = serializers.SerializerMethodField()
 
     class Meta:
         model = ExerciseSession
-        fields = ["id", "patient_id", "plan_id", "plan_name", "doctor_name", "started_at", "completed_at", "body_part_scores", "results"]
+        fields = ["id", "patient_id", "plan_id", "plan_name", "doctor_name", "started_at", "completed_at", "body_part_scores", "results", "feedback"]
 
     def get_doctor_name(self, obj):
         doc = obj.plan.doctor
@@ -224,6 +225,12 @@ class ExerciseSessionSerializer(serializers.ModelSerializer):
     def get_results(self, obj):
         rows = obj.results.select_related("exercise").order_by("order", "id")
         return ExerciseResultSerializer(rows, many=True).data
+
+    def get_feedback(self, obj):
+        feedback = obj.feedback.first()
+        if feedback:
+            return DoctorFeedbackSerializer(feedback).data
+        return None
 
 class DoctorFeedbackSerializer(serializers.ModelSerializer):
     patient_id = serializers.PrimaryKeyRelatedField(

@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { getPatientSessions } from '../../api/rehabApi'
+import { getMyPatients } from '../../api/connectionsApi'
 import { 
   ChevronLeft, 
   Calendar, 
@@ -18,47 +19,62 @@ function PatientDetail() {
   const { id } = useParams()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
-
+  const [patientInfo, setPatientInfo] = useState(null)
+  
   useEffect(() => {
     getPatientSessions(id)
       .then(data => setSessions(data))
       .catch(err => console.error(err))
       .finally(() => setLoading(false))
+      
+    getMyPatients()
+      .then(patients => {
+        const found = patients.find(p => p.id === parseInt(id))
+        setPatientInfo(found || null)
+      })
+      .catch(err => console.error(err))
   }, [id])
 
-  // Mock data matching the provided mockup for non-session info
+  const latestSession = sessions[0]
+
+  // Map real feedback to notes
+  const notes = sessions
+    .filter(s => s.feedback)
+    .map((s, index) => ({
+      id: s.feedback.id || index,
+      date: new Date(s.feedback.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' }),
+      tag: 'EVALUATION',
+      content: s.feedback.guidance,
+      rating: s.feedback.rating
+    }))
+
+  // Extract unique plans from sessions
+  const uniquePlans = []
+  const planIds = new Set()
+  sessions.forEach(s => {
+    if (s.plan_id && !planIds.has(s.plan_id)) {
+      planIds.add(s.plan_id)
+      uniquePlans.push({
+        id: s.plan_id,
+        name: s.plan_name,
+        details: 'Assigned Therapy Plan',
+        icon: '📋'
+      })
+    }
+  })
+
   const patient = {
     id,
-    name: 'Sarah Chen',
-    condition: 'Post-ACL Reconstruction (Left)',
-    timeline: 'Day 45 of 120',
-    compliance: '92%',
-    lastSession: 'Oct 24',
-    painLevel: '2.4',
-    painTrend: '-0.5',
-    initials: 'SC',
-    notes: [
-      { 
-        id: 1, 
-        date: 'OCT 24, 2023 • 09:15 AM', 
-        tag: 'FOLLOW-UP', 
-        content: 'Patient reported morning stiffness but pain decreased during exercise. Increased terminal knee extension (TKE) repetitions to 15. Manual therapy performed to address medial scar tissue adhesion.' 
-      },
-      { 
-        id: 2, 
-        date: 'OCT 18, 2023 • 11:30 AM', 
-        tag: 'ASSESSMENT', 
-        content: 'Range of motion test: Extension 0°, Flexion 115°. Progressing well toward Week 6 goals. Initiated weight-bearing exercise transition.' 
-      }
-    ],
-    currentPlan: [
-      { id: 1, name: 'Quadriceps Sets', details: '3 sets • 15 reps • 5s hold', icon: '⚡' },
-      { id: 2, name: 'Heel Slides', details: '2 sets • 10 reps • Slow tempo', icon: '🚶' },
-      { id: 3, name: 'Straight Leg Raises', details: '3 sets • 12 reps • No lag', icon: '🦵' }
+    name: patientInfo?.name || 'Loading...',
+    condition: 'Physical Rehabilitation',
+    timeline: patientInfo ? `Connected since ${new Date(patientInfo.connected_at).toLocaleDateString()}` : '',
+    lastSession: latestSession ? new Date(latestSession.started_at).toLocaleDateString() : 'None',
+    notes: notes,
+    currentPlan: uniquePlans.length > 0 ? uniquePlans : [
+      { id: 'none', name: 'No plans assigned yet', details: 'Create a plan to get started', icon: '❓' }
     ],
   }
 
-  const latestSession = sessions[0]
   const sessionReport = latestSession ? {
     exercise_results: latestSession.results?.map(r => ({
       name: r.exercise_name,
@@ -237,7 +253,7 @@ function PatientDetail() {
             </div>
             
             <div className="space-y-12">
-              {patient.notes.map((note, i) => (
+              {patient.notes.length > 0 ? patient.notes.map((note, i) => (
                 <div key={note.id} className="relative pl-12">
                    <div className="absolute left-0 top-1.5 h-4 w-4 rounded-full bg-white border-4 border-slate-900 ring-8 ring-slate-50 shadow-sm z-10"></div>
                    {i !== patient.notes.length - 1 && <div className="absolute left-[7.5px] top-8 bottom-[-48px] w-0.5 bg-slate-100"></div>}
@@ -246,13 +262,17 @@ function PatientDetail() {
                         <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">{note.date}</span>
                         <div className="h-1 w-1 rounded-full bg-slate-300"></div>
                         <span className="text-[9px] font-black tracking-widest bg-blue-50 text-blue-600 px-2 py-1 rounded-lg border border-blue-100">{note.tag}</span>
+                        <div className="h-1 w-1 rounded-full bg-slate-300"></div>
+                        <span className="text-[10px] font-bold text-amber-500">{"★".repeat(note.rating)}{"☆".repeat(5 - note.rating)}</span>
                      </div>
                    </div>
-                   <p className="text-base leading-relaxed text-slate-600 font-medium bg-slate-50/50 p-6 rounded-[1.5rem] border border-slate-100/50">
+                   <p className="text-base leading-relaxed text-slate-600 font-medium bg-slate-50/50 p-6 rounded-[1.5rem] border border-slate-100/50 whitespace-pre-wrap">
                      {note.content}
                    </p>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-slate-400 italic py-8 text-center border-2 border-dashed border-slate-100 rounded-[2rem]">No clinical feedback provided yet.</p>
+              )}
             </div>
           </section>
         </div>
